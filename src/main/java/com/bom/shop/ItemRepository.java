@@ -1,4 +1,8 @@
 package com.bom.shop;
 
-interface ItemRepository extends org.springframework.data.repository.Repository<com.bom.shop.Item, java.lang.Long> {
+
+import org.springframework.data.jpa.repository.JpaRepository;
+
+public interface ItemRepository extends JpaRepository<Item, Long> {
+
 }
