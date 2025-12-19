@@ -30,7 +30,7 @@ public class ItemController {
         var a = new Item();
         System.out.println(a.title);
 
-        return "list.html";
+        return "list";
     }
 
 }
