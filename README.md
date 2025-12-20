@@ -330,3 +330,244 @@ public void setPrice(Integer price) {
 ```
 
 ---
+## 16) 상품 추가 기능 (Write → Add)
+
+### 글 작성 페이지 라우팅
+
+```java
+@GetMapping("/write")
+String write() {
+  return "write"; // templates/write.html
+}
+```
+
+---
+
+### write.html 폼 만들기
+
+```html
+<form action="/add" method="post">
+  <input name="title" />
+  <input name="price" />
+  <button type="submit">등록</button>
+</form>
+```
+
+✅ 포인트
+
+- `name="title"`, `name="price"`가 서버 파라미터명(또는 DTO/Entity 필드명)과 매칭되어야 바인딩됨
+- 버튼은 `type="submit"`이어야 폼이 전송됨 (`button` 기본 타입은 브라우저마다 다르게 동작할 수 있어 명시 추천)
+
+---
+
+### 전송: 서버에서 파라미터 받기 (@RequestParam)
+
+```java
+@PostMapping("/add")
+String addPost(@RequestParam String title, @RequestParam Integer price) {
+  // 저장 로직 ...
+  return "redirect:/list";
+}
+```
+
+- `redirect:/list`는 **서버 렌더링(폼 제출) 방식에서 페이지 이동 가능**
+- **AJAX로 호출한 경우**에는 `redirect:`로 화면 이동이 자동으로 되지 않음
+
+  (AJAX는 응답을 “데이터”로 받기 때문 → 프론트에서 직접 이동 처리 필요)
+
+
+---
+
+## 17) AJAX로 보낸 데이터 처리 (@RequestBody)
+
+- form 전송(`application/x-www-form-urlencoded`)은 `@RequestParam`/`@ModelAttribute`로 잘 받음
+- AJAX(JSON)로 body에 담아서 보낸 데이터는 보통 `@RequestBody`로 받음
+
+예시(JSON 요청을 받을 때):
+
+```java
+@PostMapping("/add")
+String addPost(@RequestBody Map<String, Object> body) {
+  System.out.println(body);
+  return "ok";
+}
+```
+
+> JSON으로 받을 땐 보통 DTO 클래스를 만들어 @RequestBody ItemRequest dto처럼 받는 방식이 더 많이 쓰임.
+>
+
+---
+
+## 18) Map 자료형으로 파라미터 한 번에 받기
+
+### @RequestParam Map
+
+폼 전송 값을 한 번에 받고 싶을 때:
+
+```java
+@PostMapping("/add")
+String writePost(@RequestParam Map<String, Object> formData) {
+  System.out.println(formData);
+  return "redirect:/list";
+}
+```
+
+> 단, Map으로 받으면 타입 변환/검증이 번거로울 수 있음 (ex. price가 String으로 들어옴)
+>
+
+---
+
+### Map 생성/사용
+
+```java
+Map<String, Object> test = new HashMap<>();
+test.put("title", "모자");
+
+Object title = test.get("title");
+```
+
+---
+
+## 19) 가장 쉬운 저장: @ModelAttribute로 Entity/DTO 바인딩 후 save
+
+폼 필드명이 엔티티 필드명과 같으면 자동 바인딩됨:
+
+```java
+@PostMapping("/add")
+String writePost(@ModelAttribute Item item) {
+  itemRepository.save(item);
+  return "redirect:/list";
+}
+```
+
+✅ 전제 조건
+
+- `Item`에 `title`, `price` 필드가 있고
+- setter/getter가 있거나 Lombok(`@Getter`, `@Setter`)이 적용되어 있어야 함
+- HTML input의 `name`이 필드명과 일치해야 함 (`title`, `price`)
+
+---
+
+## 20) Thymeleaf로 HTML UI 재사용 (Fragment)
+
+### Fragment 정의 (nav.html 등)
+
+```html
+<div class="nav" th:fragment="navbar">
+  <a class="logo">SpringMall</a>
+  <a href="/list">List</a>
+  <a href="/write">Write</a>
+</div>
+```
+
+- `th:fragment="navbar"`로 정의해두면 다른 파일에서 가져다 쓸 수 있음
+
+### Fragment 사용
+
+```html
+<div th:replace="~{nav.html :: navbar}"></div>
+```
+
+> nav.html 파일은 보통 templates/ 아래에 둔다.
+>
+>
+> (예: `src/main/resources/templates/nav.html`)
+>
+
+## 21) URL 파라미터(Path Variable)로 상세 페이지 만들기
+
+### Path Variable 기본 문법
+
+```java
+@GetMapping("/detail/{id}")
+String detail(@PathVariable Long id) {
+  Optional<Item> result = itemRepository.findById(id);
+  return "detail"; // templates/detail.html
+}
+```
+
+- `/detail/1`, `/detail/2` 처럼 **URL 경로에 포함된 값(id)** 을 받아올 때 `@PathVariable` 사용
+- `findById(id)` : 해당 `id`의 데이터를 조회
+
+---
+
+### Optional 타입 개념
+
+`findById()`의 반환값은 `Optional<Item>` 인 경우가 많음.
+
+- `Optional`은 **값이 있을 수도 있고 없을 수도 있음(null 가능성)** 을 감싸는 타입
+- 값이 없는데 `.get()`을 호출하면 예외가 발생할 수 있음 (`NoSuchElementException`)
+- 따라서 아래처럼 **존재 여부 체크** 후 꺼내는 게 안전함
+
+```java
+Optional<Item> result = itemRepository.findById(id);
+
+if (result.isPresent()) {
+  Item item = result.get();
+  System.out.println(item);
+}
+```
+
+- `result.isPresent()` : 값이 존재하는지 체크
+- `result.get()` : Optional 안의 실제 값을 꺼냄 (존재할 때만)
+
+---
+
+## 22) Thymeleaf로 링크 만들기 (th:href)
+
+Thymeleaf에서는 `href`를 직접 문자열로 쓰기보다 `th:href`로 URL을 생성하는 경우가 많다.
+
+### 기본 링크
+
+```html
+<a th:href="@{/list}">List</a>
+<a th:href="@{/write}">Write</a>
+```
+
+### Path Variable 포함 링크
+
+```html
+<a th:href="@{/detail/{id}(id=${item.id})}">상세보기</a>
+```
+
+- `/detail/{id}`형태의 URL에 `item.id` 값을 넣어 `/detail/1` 같은 링크를 만든다.
+
+> 참고: th:href="@{...}" 형태를 사용한다. (@{}가 URL 표현식)
+>
+
+---
+
+## 23) 예외 상황 처리하기 (error.html)
+
+스프링 부트는 기본 에러 페이지를 제공하지만, `error.html`을 만들면 커스텀 에러 화면을 보여줄 수 있다.
+
+### error.html 생성 위치
+
+- `src/main/resources/templates/error.html`
+
+### error.html 예시 (Thymeleaf)
+
+```html
+<!doctype html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8" />
+  <title>Error</title>
+</head>
+<body>
+  <h1>에러가 발생했습니다</h1>
+
+  <p th:text="${status}"></p>
+  <p th:text="${error}"></p>
+  <p th:text="${path}"></p>
+  <p th:text="${message}"></p>
+  <p th:text="${exception}"></p>
+</body>
+</html>
+```
+
+- `${status}`: HTTP 상태 코드 (예: 404, 500)
+- `${error}`: 에러 이름
+- `${path}`: 요청 경로
+- `${message}`: 에러 메시지
+- `${exception}`: 예외 클래스 정보

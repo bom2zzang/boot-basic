@@ -10,12 +10,11 @@
 </head>
 <body>
 <div th:replace="~{ nav.html::navbar }"></div>
-<div class="card" th:each="item:${items}">
+<div class="detail">
+    <h4>상세페이지</h4>
     <img src="https://placehold.co/300">
-    <a th:href="@{/detail/{id}(id = ${item.id})}">
-        <h4 th:text="${item.title}" ></h4>
-        <p th:text="${item.price}"></p>
-    </a>
+    <h4 th:text="${item.title}"></h4>
+    <p th:text="${item.price+ '원'}"></p>
 </div>
 
 </body>

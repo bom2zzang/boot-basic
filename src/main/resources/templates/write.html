@@ -10,13 +10,12 @@
 </head>
 <body>
 <div th:replace="~{ nav.html::navbar }"></div>
-<div class="card" th:each="item:${items}">
-    <img src="https://placehold.co/300">
-    <a th:href="@{/detail/{id}(id = ${item.id})}">
-        <h4 th:text="${item.title}" ></h4>
-        <p th:text="${item.price}"></p>
-    </a>
-</div>
+
+<form action="/add" method="POST">
+    <input name="title">
+    <input name="price">
+    <button type="submit">전송</button>
+</form>
 
 </body>
 </html>

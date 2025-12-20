@@ -1,16 +1,23 @@
 package com.bom.shop;
 
 import jakarta.persistence.*;
+import lombok.Getter;
+import lombok.Setter;
 import lombok.ToString;
 
 @Entity
 @ToString
+@Getter
+@Setter
 public class Item {
-    @Id @GeneratedValue(strategy = GenerationType.IDENTITY)
+    @Id
+    @GeneratedValue(strategy = GenerationType.IDENTITY)
     public Long id;
 
     @Column(nullable = false)
-    public String title;
+    private String title;
 
-    public Integer price;
+    private Integer price;
+
+
 }
