@@ -178,7 +178,6 @@ HTML:
 ```
 
 > ${items}는 Controller에서 model.addAttribute("items", result)로 넣어줘야 함
->
 
 ---
 
@@ -571,3 +570,120 @@ Thymeleaf에서는 `href`를 직접 문자열로 쓰기보다 `th:href`로 URL�
 - `${path}`: 요청 경로
 - `${message}`: 에러 메시지
 - `${exception}`: 예외 클래스 정보
+
+---
+
+## 24) REST API 예외 처리
+
+HTML을 반환하는 컨트롤러와 달리, REST API는 보통 **JSON/문자열 + HTTP 상태 코드**를 함께 내려주는 방식으로 예외를 처리한다.
+
+### 24-1) try-catch로 직접 처리
+
+`try` 안의 코드에서 에러가 나면 `catch`가 실행된다.
+
+```java
+@GetMapping("/api/test")
+@ResponseBody
+Stringtest() {
+try {
+thrownewException("에러임");
+  }catch (Exception e) {
+    System.out.println(e.getMessage());
+return"에러남";
+  }
+}
+```
+
+---
+
+### 24-2) throw Exception + throws Exception (Checked Exception)
+
+함수 안에서 `throw new Exception(...)`처럼 **Checked Exception**을 던졌는데,
+
+`try-catch`로 처리하지 않으면 메서드 선언부에 `throws Exception`을 붙여야 한다.
+
+```java
+@GetMapping("/api/detail/{id}")
+@ResponseBody
+Stringdetail()throws Exception {
+thrownewException("이런저런에러");
+}
+```
+
+> 참고: RuntimeException 계열은 throws를 강제하지 않는 경우가 많다.
+>
+
+---
+
+### 24-3) ResponseEntity로 상태코드 + 메시지 함께 반환
+
+에러 응답에 **HTTP 상태 코드**를 명확하게 실어 보내면 디버깅/원인 파악이 쉬워진다.
+
+```java
+@GetMapping("/api/detail/{id}")
+ResponseEntity<String>detail() {
+try {
+thrownewException("이런저런에러");
+  }catch (Exception e) {
+return ResponseEntity
+        .status(400)// 원하는 상태코드
+        .body("에러이유: " + e.getMessage());
+  }
+}
+```
+
+---
+
+### 24-4) @ExceptionHandler (컨트롤러 단위 예외 처리)
+
+특정 컨트롤러 클래스 내부에서 발생한 예외를 한 곳으로 모아서 처리할 수 있다.
+컨트롤러의 API 메서드들과 **나란히** 작성한다.
+
+```java
+@Controller
+publicclassItemController {
+
+// API들...
+
+@ExceptionHandler(Exception.class)
+public ResponseEntity<String>exceptionHandler(Exception e) {
+return ResponseEntity
+        .status(400)
+        .body("ItemController 에러: " + e.getMessage());
+  }
+}
+```
+
+- `@ExceptionHandler(Exception.class)` : 해당 타입의 예외가 발생하면 이 메서드가 처리
+- 파라미터로 예외 객체(`Exception e`)를 받을 수 있음
+
+특정 에러만 처리하고 싶다면 타입을 바꾸면 된다.
+
+```java
+@ExceptionHandler(MethodArgumentTypeMismatchException.class)
+public ResponseEntity<String>typeMismatch(MethodArgumentTypeMismatchException e) {
+return ResponseEntity.status(400).body("파라미터 타입이 올바르지 않습니다.");
+}
+```
+
+---
+
+### 24-5) @ControllerAdvice (전역 예외 처리)
+
+여러 컨트롤러에서 발생하는 예외를 **한 번에** 처리하고 싶을 때 사용한다.
+
+```java
+@ControllerAdvice
+publicclassMyExceptionHandler {
+
+@ExceptionHandler(Exception.class)
+public ResponseEntity<String>handler(Exception e) {
+return ResponseEntity
+        .status(400)
+        .body("모든 컨트롤러 에러시 발동: " + e.getMessage());
+  }
+}
+```
+
+- `@ControllerAdvice` : 전역(여러 컨트롤러) 예외 처리 클래스
+- 컨트롤러별로 중복되던 try-catch/에러 응답 로직을 한 곳으로 모을 수 있음
