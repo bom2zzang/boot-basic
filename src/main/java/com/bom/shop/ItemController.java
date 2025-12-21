@@ -15,12 +15,12 @@ import java.util.Optional;
 public class ItemController {
 
     private final ItemRepository itemRepository;
+    private final ItemService itemService;
 
 
     @GetMapping("/list")
     String list(Model model){
         List<Item> result = itemRepository.findAll();
-        System.out.println(result.toString());
         model.addAttribute("items", result);
         return "list";
     }
@@ -31,22 +31,17 @@ public class ItemController {
     }
 
     @PostMapping("/add")
-    String addPost(Item item){
-        itemRepository.save(item);
+    String addPost(String title, Integer price){
+        itemService.saveItem(title, price);
         return "redirect:/list";
     }
 
     @GetMapping("/detail/{id}")
-    String detail(@PathVariable Long id, Model model){
+    String detail(@PathVariable Long id, Model model) throws Exception {
 
-        Optional<Item> result = itemRepository.findById(id);
-        if(result.isPresent()){
-            System.out.println(result.get());
-            model.addAttribute("item", result.get());
+        Optional<Item> item = itemService.getItem(id);
+            model.addAttribute("item", item.get());
             return "detail";
-        }else{
-            return "list";
-        }
     }
 
 }

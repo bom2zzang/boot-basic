@@ -687,3 +687,131 @@ return ResponseEntity
 
 - `@ControllerAdvice` : 전역(여러 컨트롤러) 예외 처리 클래스
 - 컨트롤러별로 중복되던 try-catch/에러 응답 로직을 한 곳으로 모을 수 있음
+
+---
+
+## 25) Service 레이어 분리 (비즈니스 로직 분리)
+
+컨트롤러(Controller)는 **요청/응답 처리**에 집중하고,
+
+실제 “저장/검증/계산” 같은 **비즈니스 로직은 Service 레이어로 분리**하는 것이 좋다.
+
+> 원칙: 하나의 함수 안에는 하나의 기능만 담는 게 좋음
+>
+
+---
+
+### 25-1) Service 클래스 만들기
+
+- 함수(비즈니스 로직)를 담을 클래스에 `@Service`를 붙인다.
+- 보통 생성자 주입을 위해 `@RequiredArgsConstructor`를 함께 사용한다.
+
+```java
+@Service
+@RequiredArgsConstructor
+public class ItemService {
+
+  private final ItemRepository itemRepository;
+
+  public void saveItem(String title, Integer price) {
+    Item item = new Item();
+    item.setTitle(title);
+    item.setPrice(price);
+
+    itemRepository.save(item);
+  }
+}
+```
+
+---
+
+### 25-2) Controller에서 Service 사용하기
+
+- Service를 사용하고 싶은 곳(Controller)에 `private final`로 등록한다.
+- `@RequiredArgsConstructor`가 필요하다.
+
+```java
+@Controller
+@RequiredArgsConstructor
+public class ItemController {
+
+private final ItemService itemService;
+
+@PostMapping("/add")
+  StringwritePost(String title, Integer price) {
+    itemService.saveItem(title, price);
+return"redirect:/list";
+  }
+}
+```
+
+---
+
+## Dependency Injection (DI)
+
+다른 클래스의 기능을 쓸 때 `new 클래스()`를 매번 호출하는 대신,
+
+스프링이 **미리 만들어둔 객체를 주입받아 사용**하는 방식을 DI(의존성 주입)라고 한다.
+
+### DI를 쓰는 이유
+
+1. 매번 객체를 새로 만들지 않아도 되어 **효율적** (중복 생성 방지)
+2. 클래스 간 결합도를 낮춰 **유지보수/테스트가 쉬움**
+
+---
+
+## Container / Bean 용어
+
+- **Container (IoC Container)**: 스프링이 객체를 생성해서 보관/관리하는 공간
+- **Bean**: 컨테이너가 만들어서 관리하는 객체
+
+즉, `@Controller`, `@Service`, `@Repository` 등이 붙은 클래스들은 스프링이 Bean으로 만들어 컨테이너에 보관하고 필요할 때 주입해준다.
+
+---
+
+## 25-3) Service 레이어 예외 처리 방법
+
+서비스에서 예외 상황(검증 실패, 데이터 없음 등)을 처리하는 방식은 크게 2가지.
+
+### 방법 A) 실패 메시지를 return (단순한 경우)
+
+```java
+public StringsaveItem(...) {
+if (price <0)return"가격은 음수일 수 없음";
+  ...
+return"ok";
+}
+```
+
+- 장점: 단순함
+- 단점: 호출하는 쪽에서 문자열 비교 등 처리가 번거로울 수 있음
+
+### 방법 B) 예외를 발생시키기 (추천)
+
+```java
+publicvoidsaveItem(String title, Integer price) {
+if (price <0)thrownewIllegalArgumentException("가격은 음수 불가");
+  ...
+}
+```
+
+- Thymeleaf(SSR) 화면: 예외가 터지면 `error.html` 등으로 이동 가능
+- REST API: `@ExceptionHandler` / `@ControllerAdvice`에서 잡아서 상태코드+메시지로 응답 가능
+
+---
+
+## Exception 종류는 여러 가지
+
+- `IllegalArgumentException` (잘못된 입력값)
+- `NullPointerException` (null 접근)
+- `MethodArgumentTypeMismatchException` (요청 파라미터 타입 불일치)
+- 등등…
+
+### 상태 코드를 명확하게 주고 싶다면: ResponseStatusException
+
+```java
+thrownewResponseStatusException(HttpStatus.NOT_FOUND,"상품이 존재하지 않습니다.");
+```
+
+- 원하는 HTTP 상태코드(404/400 등)와 메시지를 함께 설정할 수 있음
+- REST API에서 특히 유용함
