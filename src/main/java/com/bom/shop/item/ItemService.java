@@ -1,4 +1,4 @@
-package com.bom.shop;
+package com.bom.shop.item;
 
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
@@ -29,4 +29,18 @@ public class ItemService {
             throw new Exception();
         }
     }
+
+    public void updateItem(Long id, String title, Integer price) throws Exception {
+       if(price < 0){
+           throw new IllegalArgumentException("Price cannot be negative");
+        }
+       if(title.length() > 100){
+           throw new IllegalArgumentException("Title length exceeds limit");
+       }
+            Item item = new Item();
+            item.setId(id);
+            item.setTitle(title);
+            item.setPrice(price);
+            itemRepository.save(item);
+        }
 }

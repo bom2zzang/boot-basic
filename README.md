@@ -1,4 +1,3 @@
-# boot-basic
 ## **1) IntelliJ / 실행 단축키**
 
 - `sout` + Enter : `System.out.println()`
@@ -8,7 +7,7 @@
 
 ---
 
-## 2) Java 기초 문법
+## 2) Java 기초 문법 (정리)
 
 ### 타입
 
@@ -178,6 +177,7 @@ HTML:
 ```
 
 > ${items}는 Controller에서 model.addAttribute("items", result)로 넣어줘야 함
+>
 
 ---
 
@@ -329,6 +329,7 @@ public void setPrice(Integer price) {
 ```
 
 ---
+
 ## 16) 상품 추가 기능 (Write → Add)
 
 ### 글 작성 페이지 라우팅
@@ -747,7 +748,7 @@ return"redirect:/list";
 
 ---
 
-## Dependency Injection (DI)
+### Dependency Injection (DI)
 
 다른 클래스의 기능을 쓸 때 `new 클래스()`를 매번 호출하는 대신,
 
@@ -760,7 +761,7 @@ return"redirect:/list";
 
 ---
 
-## Container / Bean 용어
+### Container / Bean 용어
 
 - **Container (IoC Container)**: 스프링이 객체를 생성해서 보관/관리하는 공간
 - **Bean**: 컨테이너가 만들어서 관리하는 객체
@@ -769,7 +770,7 @@ return"redirect:/list";
 
 ---
 
-## 25-3) Service 레이어 예외 처리 방법
+### 25-3) Service 레이어 예외 처리 방법
 
 서비스에서 예외 상황(검증 실패, 데이터 없음 등)을 처리하는 방식은 크게 2가지.
 
@@ -800,7 +801,7 @@ if (price <0)thrownewIllegalArgumentException("가격은 음수 불가");
 
 ---
 
-## Exception 종류는 여러 가지
+### Exception 종류는 여러 가지
 
 - `IllegalArgumentException` (잘못된 입력값)
 - `NullPointerException` (null 접근)
@@ -810,8 +811,67 @@ if (price <0)thrownewIllegalArgumentException("가격은 음수 불가");
 ### 상태 코드를 명확하게 주고 싶다면: ResponseStatusException
 
 ```java
-thrownewResponseStatusException(HttpStatus.NOT_FOUND,"상품이 존재하지 않습니다.");
+throw new ResponseStatusException(HttpStatus.NOT_FOUND,"상품이 존재하지 않습니다.");
 ```
 
 - 원하는 HTTP 상태코드(404/400 등)와 메시지를 함께 설정할 수 있음
 - REST API에서 특히 유용함
+
+---
+
+## 26) 수정/삭제 기능 추가 (Edit / Delete)
+
+---
+
+### 26-1) JPA 수정 기능 (`save()`로 덮어쓰기)
+
+JPA는 **이미 존재하는 id**를 가진 엔티티를 `save()` 하면 **INSERT가 아니라 UPDATE(수정)** 처리가 된다.
+
+```java
+@PostMapping("/edit")
+String editItem(Long id, String title, Integer price) {
+  Item item = new Item();
+  item.setId(id);       // 기존에 존재하는 id
+  item.setTitle(title);
+  item.setPrice(price);
+
+  itemRepository.save(item); // id가 있으면 덮어쓰기(수정)
+  return "redirect:/list";
+}
+```
+
+✅ 포인트
+
+- `id`가 **DB에 존재하면 수정**, 존재하지 않으면 **새로 추가**될 수 있음
+- 폼 전송 방식이면 `redirect:/list`로 이동 가능
+- (실무에선 보통 `findById → 값 변경 → save`로 수정하는 방식도 많이 사용)
+
+---
+
+### 26-2) AJAX 삭제 기능 (fetch + DELETE)
+
+Thymeleaf에서 id를 끼워 넣어서 DELETE 요청을 보낼 수 있다.
+
+```html
+<span onclick="fetch('/item?id=[[${i.id}]]', { method: 'DELETE' })">🗑️</span>
+```
+
+> 삭제 후 목록 갱신이 필요하면 .then(() => location.reload()) 또는 location.href='/list' 같은 처리를 추가한다.
+>
+
+---
+
+### 26-3) 삭제 API (Controller)
+
+```java
+@DeleteMapping("/item")
+ResponseEntity<String> deleteItem(@RequestParam Long id) {
+  itemRepository.deleteById(id);
+return ResponseEntity.status(200).body("삭제완료");
+}
+```
+
+- `@DeleteMapping` : HTTP DELETE 요청 처리
+- `@RequestParam Long id` : `/item?id=1` 형태로 전달된 id 받기
+- `deleteById(id)` : 해당 id 데이터 삭제
+- `ResponseEntity` : 상태 코드 + 메시지를 함께 반환 가능
