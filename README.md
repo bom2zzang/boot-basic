@@ -1139,3 +1139,172 @@ Stringencoded= passwordEncoder.encode(rawPassword);
 
 - `PasswordEncoder`는 “비밀번호를 안전하게 해싱/검증하는 인터페이스”
 - 구현체로 `BCryptPasswordEncoder`를 사용하면 보통 무난하게 시작 가능
+
+--- 
+## 29) 로그인 구현 (Spring Security Form Login)
+
+Spring Security의 **폼 로그인(formLogin)** 을 이용하면,
+로그인/로그아웃/인증 체크를 비교적 빠르게 구현할 수 있다.
+
+---
+
+### 29-1) 로그인 설정 (SecurityConfig)
+
+`SecurityConfig.java`의 `filterChain` 안에 `formLogin` 설정을 추가한다.
+
+```java
+http.formLogin((formLogin) -> formLogin
+    .loginPage("/login")
+    .defaultSuccessUrl("/")
+    .failureUrl("/fail")
+);
+```
+
+- `formLogin()` : “폼 로그인 방식으로 인증하겠다”는 설정
+- `loginPage("/login")` : 로그인 페이지 URL (직접 만든 로그인 화면)
+- `defaultSuccessUrl("/")` : 로그인 성공 시 이동할 URL
+- `failureUrl("/fail")` : 로그인 실패 시 이동할 URL
+
+---
+
+### 29-2) MyUserDetailsService (왜 필요한가?)
+
+Spring Security가 아이디/비번 검증을 하려면
+
+**DB에 저장된 비밀번호(암호화된 값)** 를 알아야 한다.
+
+근데 Security는 비밀번호가 DB 어디 테이블/어느 컬럼에 있는지를 모른다.
+
+그래서 **username을 받으면 DB에서 유저를 찾아서 UserDetails로 돌려주는 코드**를 만들어줘야 한다.
+
+그 역할을 하는 게 `UserDetailsService` 구현체이다.
+
+### MyUserDetailsService 예시
+
+```java
+@Service
+@RequiredArgsConstructor
+public class MyUserDetailsService implements UserDetailsService {
+
+private final MemberRepository memberRepository;
+
+@Override
+public UserDetailsloadUserByUsername(String username)throws UsernameNotFoundException {
+
+var result= memberRepository.findByUsername(username);
+
+if (result.isEmpty()) {
+throw new UsernameNotFoundException("그런 아이디 없음");
+    }
+
+varuser= result.get();
+
+    List<GrantedAuthority> authorities =newArrayList<>();
+    authorities.add(newSimpleGrantedAuthority("일반유저"));
+
+return new org.springframework.security.core.userdetails.User(
+        user.getUsername(),
+        user.getPassword(),// DB에 저장된 암호화된 비번
+        authorities
+    );
+  }
+}
+```
+
+- `loadUserByUsername(username)`에서 **DB 조회**
+- 조회한 유저의 `username / password(암호화된 값) / 권한목록`을 만들어서 `UserDetails`로 반환
+- 그러면 Security가 **비밀번호 비교(검증) / 인증 처리**를 자동으로 진행해준다.
+
+---
+
+### 29-3) MemberRepository에 findByUsername 만들기
+
+`findById()`는 `JpaRepository` 기본 메서드지만,
+
+`findByUsername()`은 직접 선언해야 한다.
+
+```java
+public interface MemberRepository extends JpaRepository<Member, Long> {
+  Optional<Member>findByUsername(String username);
+}
+```
+
+- `findBy컬럼명(값)` 형태로 만들면, Spring Data JPA가 자동으로 쿼리를 만들어준다.
+- “없을 수도 있음”을 고려해서 `Optional`이 흔히 사용된다.
+
+---
+
+### 29-4) 로그인 정보 확인 (Controller에서 Authentication 사용)
+
+로그인한 유저 정보는 컨트롤러에서 `Authentication` 파라미터로 받을 수 있다.
+
+```java
+@GetMapping("/my-page")
+public StringmyPage(Authentication auth) {
+
+  System.out.println(auth);// 인증 객체 전체
+  System.out.println(auth.getName());// 보통 username
+
+  System.out.println(auth.isAuthenticated());// 로그인 여부
+
+  System.out.println(
+      auth.getAuthorities().contains(newSimpleGrantedAuthority("일반유저"))
+  );// 특정 권한 보유 여부
+
+return"mypage";
+}
+```
+
+---
+
+### 29-5) Thymeleaf에서 로그인 정보 출력 (Spring Security Extras)
+
+`thymeleaf-extras-springsecurity6` 의존성이 있으면 템플릿에서 인증 정보를 쉽게 쓸 수 있다.
+
+```html
+<span sec:authentication="principal"></span>
+<span sec:authentication="principal.username"></span>
+<span sec:authentication="principal.authorities"></span>
+```
+
+권한/로그인 여부에 따른 조건 렌더링:
+
+```html
+<span sec:authorize="hasAuthority('일반유저')">특정권한이 있으면 보임</span>
+<div sec:authorize="isAuthenticated()">
+  로그인된 사람만 보임</div>
+```
+
+---
+
+### 29-6) 로그아웃 설정 (SecurityConfig)
+
+```java
+http.logout(logout -> logout.logoutUrl("/logout"));
+```
+
+- `/logout`으로 요청하면 로그아웃 처리
+- 기본적으로 세션 기반이면 세션이 종료된다.
+
+---
+
+### 29-7) 로그인 필요 여부를 어노테이션으로 체크 (@PreAuthorize)
+
+특정 API에 “로그인/권한 필요” 조건을 걸 수 있다.
+
+```java
+@PreAuthorize("isAuthenticated()")
+@GetMapping("/admin")
+public Stringadmin() {
+return"admin";
+}
+```
+
+자주 쓰는 표현
+
+- `@PreAuthorize("isAuthenticated()")` : 로그인한 사람만
+- `@PreAuthorize("isAnonymous()")` : 로그인 안 한 사람만
+- `@PreAuthorize("hasAuthority('어쩌구')")` : 특정 권한 가진 사람만
+
+> 참고: @PreAuthorize를 쓰려면 보통 메서드 보안 활성화 설정이 추가로 필요할 수 있다.
+>

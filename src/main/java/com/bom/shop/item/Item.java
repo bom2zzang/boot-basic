@@ -18,6 +18,7 @@ public class Item {
     private String title;
 
     private Integer price;
+    private String regName;
 
 
 }

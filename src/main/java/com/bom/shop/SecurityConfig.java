@@ -19,6 +19,12 @@ public class SecurityConfig {
         http.authorizeHttpRequests((authorize) ->
                 authorize.requestMatchers("/**").permitAll()
         );
+        http.formLogin((formLogin) -> formLogin.loginPage("/login")
+                .defaultSuccessUrl("/list")
+//                .failureUrl("/")
+        );
+
+        http.logout(logout -> logout.logoutUrl("/logout"));
         return http.build();
     }
 

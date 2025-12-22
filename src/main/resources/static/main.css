@@ -15,6 +15,11 @@
     font-weight : 800;
 }
 
+.nav .info {
+    margin-left : auto;
+    font-size : 14px;
+}
+
 input, button {
     padding : 8px 13px;
     margin-top : 5px;
