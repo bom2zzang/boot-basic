@@ -875,3 +875,267 @@ return ResponseEntity.status(200).body("삭제완료");
 - `@RequestParam Long id` : `/item?id=1` 형태로 전달된 id 받기
 - `deleteById(id)` : 해당 id 데이터 삭제
 - `ResponseEntity` : 상태 코드 + 메시지를 함께 반환 가능
+
+---
+
+## 27) Session / JWT / OAuth 개념 정리
+
+로그인이 필요한 기능(마이페이지, 글쓰기, 결제 등)을 만들 때는 “이 요청을 보낸 사람이 누구인지”를 확인해야 한다.
+
+이때 대표적으로 **Session 방식**, **JWT(Token) 방식**을 사용하고, 외부 서비스 로그인(구글/카카오 등)은 **OAuth**를 사용한다.
+
+---
+
+### 27-1) Session 방식
+
+### 로그인 흐름
+
+1. 유저가 로그인하면 서버(또는 DB/저장소)에 아래 정보를 저장한다.
+  - 유저 아이디
+  - 유효기간(만료 시간)
+  - `session id` (랜덤 문자열/숫자)
+2. 유저에게 “입장권(쿠키)”을 발급할 때는 보통 **session id만** 담아서 보낸다.
+
+> session id는 “세션 레코드를 구분하는 랜덤 키”라고 보면 됨.
+>
+
+### 로그인 필요한 요청 흐름
+
+1. 유저가 GET/POST 요청 시 **쿠키(입장권)** 를 함께 제출한다.
+2. 서버는 쿠키의 `session id`로 저장소(DB/Redis 등)를 조회한다.
+3. 세션이 유효하면 요청을 통과시킨다.
+
+### 장점
+
+- 매 요청마다 저장소를 확인하므로 **요청 단위로 엄격한 인증/만료/차단 관리**가 쉽다.
+- 서버가 세션을 지우면 강제 로그아웃(토큰 폐기)이 가능하다.
+
+### 단점
+
+- 매 요청마다 조회하니 **저장소 부하**가 커질 수 있다.
+- 트래픽이 크면 **Redis 같은 빠른 저장소**로 세션을 관리하는 경우가 많다.
+
+---
+
+### 27-2) JWT(Token) 방식
+
+> Token은 여러 종류가 있지만 보통 실무에서 말하는 token은 JWT(JSON Web Token) 를 의미하는 경우가 많다.
+>
+
+JWT는 “입장권(토큰)” 안에 유저 정보를 담고, 서버는 매 요청마다 DB를 조회하지 않고도 인증할 수 있게 한다.
+
+### 로그인 흐름
+
+1. 유저가 로그인하면 서버는 JWT를 만들어 유저에게 발급한다.
+2. JWT 안에는 보통 다음 같은 정보(Claim)가 들어간다.
+  - 유저 id (또는 username)
+  - 발급 시간
+  - 만료 시간(exp)
+3. 서버는 (세션처럼) DB에 별도 저장을 안 하거나, 최소화하는 경우가 많다.
+
+### 로그인 필요한 요청 흐름
+
+1. 유저가 요청할 때 JWT를 함께 보낸다.
+  - 예: `Authorization: Bearer <token>`
+2. 서버는 JWT의 **서명(signature)** 을 검증하고
+3. 만료 여부(exp) 등을 확인한 뒤 통과시킨다.
+4. 유저 정보가 필요하면 토큰에 들어있는 값을 꺼내서 사용한다.
+
+### 위조하면 어떡함?
+
+- JWT는 단순히 암호화가 아니라, 보통 **서명(Signature)** 기반이다.
+- 토큰 생성 시 **서버만 아는 secret(또는 개인키)** 로 서명을 만든다.
+- 내용이 바뀌거나 secret이 다르면 서명이 맞지 않아서 **위조 여부를 검증으로 바로 잡아낼 수 있다.**
+
+### 장점
+
+- 매 요청마다 DB 조회가 필요 없어서 **확장성 좋고 부하가 적음**
+- 서버가 여러 대인 환경(마이크로서비스/수평 확장)에 유리
+
+### 단점
+
+- 토큰이 유출되면 **만료 전까지 막기 어려움**
+  (서버가 강제로 “이 토큰 무효”를 바로 적용하기 까다로움)
+- 다른 기기에서 발급된 토큰을 일괄 로그아웃시키는 것도 어렵다.
+- 블랙리스트(폐기 토큰 목록)를 저장소에 저장해서 체크할 수 있지만,
+  그러면 매 요청마다 조회가 들어가서 세션 방식과 유사해진다.
+
+---
+
+### 27-3) OAuth (구글/카카오 로그인 등)
+
+OAuth는 “입장권” 자체라기보다는,
+
+> A 사이트(구글/카카오)의 사용 권한을 B 사이트(내 서비스)가 제한적으로 빌려오는 절차(규칙)
+>
+
+를 정의한 표준이다.
+
+예)
+
+- 내 서비스에서 “구글로 로그인” 버튼을 누르면
+- 유저가 구글에서 동의하고
+- 내 서비스는 구글로부터 “유저 정보 접근 권한(토큰)”을 받아
+- 그 유저를 우리 서비스 회원으로 로그인 처리한다.
+
+---
+
+## 28) Spring Security (구현 도구)
+
+인증/인가를 직접 구현하기보다 보통 **Spring Security**를 사용하면 편하다.
+
+- Session 기반 로그인 기능 구현 가능
+- JWT 기반 인증 구현 가능
+- OAuth 로그인(구글/카카오) 연동 가능
+
+---
+
+### 28-1) 라이브러리 설치
+
+```
+implementation 'org.springframework.boot:spring-boot-starter-security'
+implementation 'org.thymeleaf.extras:thymeleaf-extras-springsecurity6:3.1.1.RELEASE'
+```
+
+---
+
+### 28-2) 기본 설정(SecurityConfig) 바꾸기
+
+`SecurityConfig.java` 파일을 만들고 아래처럼 작성한다.
+
+```java
+@Configuration
+@EnableWebSecurity
+public class SecurityConfig {
+
+@Bean
+public SecurityFilterChainfilterChain(HttpSecurity http)throws Exception {
+    http.authorizeHttpRequests((authorize) ->
+        authorize.requestMatchers("/**").permitAll()
+    );
+return http.build();
+  }
+}
+```
+
+- `SecurityFilterChain`:
+  - 유저 요청(Request) ↔ 서버 응답(Response) 사이에서 자동으로 실행되는 보안 필터들의 묶음
+  - 다른 프레임워크에선 “미들웨어” 같은 개념으로 이해해도 됨
+- `.requestMatchers()` : URL 패턴 지정
+- `/**` : 모든 URL
+- `.permitAll()` : 로그인 여부와 관계없이 접근 허용
+
+  → 위 설정은 **모든 URL을 모든 유저에게 허용**한다.
+
+
+> 참고: 위 문법은 **Spring Security 6+**에서 사용되는 스타일이다.
+>
+
+---
+
+### 28-3) CSRF 보안 기능 끄기 (학습/테스트용)
+
+개발 초기에 폼/POST가 막히는 경우가 많아, 학습 단계에서 일단 꺼두기도 한다.
+
+```java
+@Configuration
+@EnableWebSecurity
+public class SecurityConfig {
+
+@Bean
+public SecurityFilterChainfilterChain(HttpSecurity http)throws Exception {
+
+    http.csrf((csrf) -> csrf.disable());
+
+    http.authorizeHttpRequests((authorize) ->
+        authorize.requestMatchers("/**").permitAll()
+    );
+
+return http.build();
+  }
+}
+```
+
+### CSRF란?
+
+- 다른 사이트가 내 사이트에 **몰래 요청(특히 POST)** 을 보내서 공격하는 방식
+- 예: 공격자가 내 사이트로 POST 요청을 보내는 `<form>`을 위조해서 유저가 클릭하게 만들면,
+
+  유저의 로그인 쿠키를 이용해 서버에 요청이 날아갈 수 있음
+
+
+### CSRF 방어 방식(개념)
+
+- 폼을 내려줄 때 서버가 **랜덤 토큰**을 같이 내려줌 (숨겨진 input 등)
+- 폼 전송 시 그 토큰도 함께 보내게 하고
+- 서버는 토큰이 일치할 때만 요청을 허용
+
+### JWT와 CSRF
+
+- JWT를 쿠키가 아니라 `Authorization` 헤더에 담아 보내는 방식이면,
+
+  브라우저가 자동으로 토큰을 실어 보내지 않기 때문에 CSRF 위험이 줄어드는 편이라
+
+  CSRF를 끄는 구성도 종종 사용함
+
+- 다만 운영 환경에서는 “현재 인증 방식(Session/JWT) + 저장 위치(cookie/header)”에 따라
+
+  CSRF 설정을 다시 정확히 잡는 것이 좋다.
+
+
+---
+
+### 28-4) 패스워드는 해싱해서 저장해야 함
+
+비밀번호는 DB에 **평문으로 저장하면 안 되고**, 반드시 해싱해서 저장해야 한다.
+
+- 해싱 알고리즘 예: `bcrypt`, `argon2`, `scrypt`, `SHA-*` 등
+- Spring Security는 `BCryptPasswordEncoder` 같은 구현체를 쉽게 사용할 수 있다.
+
+```java
+varencoder=newBCryptPasswordEncoder();
+System.out.println(encoder.encode("qwer1234"));
+```
+
+---
+
+### 28-5) PasswordEncoder를 Bean으로 등록해서 DI로 사용하기
+
+매번 `new BCryptPasswordEncoder()`를 만들지 않고, 스프링이 객체를 한 번 만들어 관리(Bean)하도록 한 뒤
+
+필요한 곳에서 DI로 주입받아 쓸 수 있다.
+
+### Bean 등록
+
+```java
+@Configuration
+@EnableWebSecurity
+publicclassSecurityConfig {
+
+@Bean
+  PasswordEncoderpasswordEncoder() {
+returnnewBCryptPasswordEncoder();
+  }
+
+// (filterChain 등 생략)
+}
+```
+
+### 사용 (DI)
+
+```java
+@RequiredArgsConstructor
+@Service
+publicclassUserService {
+
+privatefinal PasswordEncoder passwordEncoder;
+
+publicvoidsignup(String rawPassword) {
+Stringencoded= passwordEncoder.encode(rawPassword);
+// encoded 값을 DB에 저장
+  }
+}
+```
+
+- `PasswordEncoder`는 “비밀번호를 안전하게 해싱/검증하는 인터페이스”
+- 구현체로 `BCryptPasswordEncoder`를 사용하면 보통 무난하게 시작 가능
