@@ -1,6 +1,7 @@
 package com.bom.shop.member;
 
 import lombok.RequiredArgsConstructor;
+import org.jspecify.annotations.Nullable;
 import org.springframework.security.core.GrantedAuthority;
 import org.springframework.security.core.authority.SimpleGrantedAuthority;
 import org.springframework.security.core.userdetails.User;
@@ -10,6 +11,7 @@ import org.springframework.security.core.userdetails.UsernameNotFoundException;
 import org.springframework.stereotype.Service;
 
 import java.util.ArrayList;
+import java.util.Collection;
 import java.util.List;
 
 @Service
@@ -31,7 +33,19 @@ public class MyUserDetailsService implements UserDetailsService {
         List<GrantedAuthority> auth = new ArrayList<>();
         auth.add(new SimpleGrantedAuthority("일반유저"));
 
-        return new User(user.getUsername(),user.getPassword(), auth);
+        var a = new CustomUser(user.getUsername(),user.getPassword(), auth);
+        a.displayName = user.getDisplayName();
+        return a;
     }
 
+
+
+
+}
+
+class CustomUser extends User{
+    public String displayName;
+    public CustomUser(String username, @Nullable String password, Collection<? extends GrantedAuthority> authorities) {
+        super(username, password, authorities);
+    }
 }

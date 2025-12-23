@@ -33,7 +33,10 @@ public class MemberController {
 
     @GetMapping("/my-page")
     String mypage(Authentication auth){
+
         if(auth != null && auth.isAuthenticated()){
+            CustomUser user = (CustomUser) auth.getPrincipal(); // 타입캐스팅
+            System.out.println("Welcome, " + user.displayName);
             return "mypage";
         }else{
             return "redirect:/login";

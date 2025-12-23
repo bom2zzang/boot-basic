@@ -1307,4 +1307,138 @@ return"admin";
 - `@PreAuthorize("hasAuthority('어쩌구')")` : 특정 권한 가진 사람만
 
 > 참고: @PreAuthorize를 쓰려면 보통 메서드 보안 활성화 설정이 추가로 필요할 수 있다.
+---
+## 30) 유저 정보 커스터마이징 (CustomUser)
+
+기본 `UserDetails(User)`에는 원하는 필드(예: `id`, `displayName`)가 없을 수 있다.
+
+이럴 때 `User`를 상속(extends)해서 커스텀 유저 클래스를 만들고, 인증 객체(principal)에 담아 사용할 수 있다.
+
+### 30-1) CustomUser 만들기
+
+```java
+public class CustomUser extends User {
+
+  public Long id;
+  public String displayName;
+
+  public CustomUser(String username,
+                    String password,
+                    List<GrantedAuthority> authorities) {
+    super(username, password, authorities);
+  }
+}
+```
+
+- `extends`로 상속을 받으면, 부모 클래스 생성자를 호출해야 하는 경우가 많다.
+- `super(...)`는 **부모 클래스(User)의 생성자(constructor)** 를 의미한다.
+
+> super() = “상속받은(부모) 클래스의 생성자 호출”
 >
+
+---
+
+### 30-2) principal 꺼내서 CustomUser로 쓰기 (타입 캐스팅)
+
+Spring Security에서 `auth.getPrincipal()`은 기본적으로 `Object` 타입처럼 다뤄질 수 있어
+
+커스텀 정보를 쓰려면 **타입 캐스팅**을 한다.
+
+```java
+CustomUseruser= (CustomUser) auth.getPrincipal();
+System.out.println(user.displayName);
+```
+
+- 왼쪽에 `(타입명)`을 붙이면 해당 타입으로 **강제 변환(캐스팅)** 할 수 있다.
+- Spring Security에서는 principal을 꺼내 커스텀 타입으로 쓰는 경우가 많아, 캐스팅 패턴이 자주 등장한다.
+
+> principal이 CustomUser가 아닌데 캐스팅하면 ClassCastException이 날 수 있음
+>
+>
+> (CustomUser를 반환하도록 UserDetailsService 구현이 필요)
+>
+
+---
+
+## 31) 세션 유지시간 설정
+
+세션 기반 인증(Session Login)을 사용할 때 세션 만료 시간을 설정할 수 있다.
+
+`application.properties`:
+
+```
+server.servlet.session.timeout=90m
+server.servlet.session.cookie.max-age=90m
+```
+
+- `server.servlet.session.timeout` : 서버 세션 만료 시간
+- `server.servlet.session.cookie.max-age` : 쿠키 유효 시간
+
+---
+
+## 32) 세션 DB 저장 (Session Persist / Spring Session JDBC)
+
+세션 데이터를 서버 메모리에만 두는 것보다, DB에 저장하면 더 안정적으로 운영할 수 있다.
+
+(서버 재시작/다중 서버 환경에서 유리)
+
+### 32-1) spring-session-jdbc 설치
+
+```
+// build.gradle
+implementation 'org.springframework.session:spring-session-jdbc'
+```
+
+### 32-2) 세션 저장소를 JDBC로 지정
+
+```
+// application.properties
+spring.session.store-type=jdbc
+```
+
+- 설정 후 실행하면 (환경에 따라) 세션 테이블이 자동 생성되고, 세션이 DB에 저장된다.
+
+---
+
+## 33) CSRF 토큰 사용
+
+CSRF는 “다른 사이트가 내 사이트로 몰래 요청을 보내는 공격”을 방지하기 위한 보안 기능이다.
+폼 전송 시 서버가 발급한 토큰을 함께 보내고, 서버가 토큰 일치 여부를 확인한다.
+
+### 33-1) CSRF Token Repository 설정
+
+```java
+@Bean
+public CsrfTokenRepository csrfTokenRepository() {
+HttpSession CsrfTokenRepository repository = new HttpSession CsrfTokenRepository();
+  repository.setHeaderName("X-XSRF-TOKEN");
+return repository;
+}
+```
+
+### 33-2) filterChain에 CSRF 설정 추가
+
+```java
+http.csrf(csrf -> csrf
+    .csrfTokenRepository(csrfTokenRepository())
+    .ignoringRequestMatchers("/login")
+);
+```
+
+- `.csrfTokenRepository(...)` : CSRF 토큰 저장/검증 방식 지정
+- `.ignoringRequestMatchers("/login")` : 특정 URL은 CSRF 검사 제외
+
+---
+
+### 33-3) Thymeleaf form에 CSRF 토큰 넣기
+
+폼 전송 시 아래 hidden input을 포함하면 CSRF 토큰이 함께 전송된다.
+
+```html
+<inputtype="hidden"
+th:name="${_csrf.parameterName}"
+th:value="${_csrf.token}">
+```
+
+- 스프링이 템플릿 렌더링 시 `_csrf` 값을 자동으로 주입해준다.
+- 이 토큰이 서버가 기대하는 값과 다르면 요청이 거절될 수 있다.
