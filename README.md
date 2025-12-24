@@ -25,3 +25,5 @@ Spring Boot 학습용 프로젝트입니다.
 - CRUD: [docs/07-crud.md](docs/07-crud.md)
 - 인증 개념(Session/JWT/OAuth): [docs/08-auth-concepts.md](docs/08-auth-concepts.md)
 - Spring Security: [docs/09-spring-security.md](docs/09-spring-security.md)
+- DTO: [docs/10-dto.md](docs/10-dto.md)
+- Pagination: [docs/11-pagination.md](docs/11-pagination.md)

@@ -9,17 +9,40 @@
     <link href="/main.css" rel="stylesheet">
 </head>
 <body>
-<div th:replace="~{ nav.html::navbar }"></div>
-<div class="card" th:each="item:${items}">
-    <img src="https://placehold.co/300">
-    <div>
-        <h4 th:text="${item.title}" ></h4>
-        <p th:text="${item.price}"></p>
-        <a th:href="@{/detail/{id}(id = ${item.id})}">상세</a>
-        <a th:href="@{/update/{id}(id = ${item.id})}">수정</a>
-        <button th:onclick="|fetchDelete([[${item.id}]])|">삭제</button>
+    <div th:replace="~{ nav.html::navbar }"></div>
+    <div class="card" th:each="item:${items}">
+        <img src="https://placehold.co/300">
+        <div>
+            <h4 th:text="${item.title}" ></h4>
+            <p th:text="${item.price}"></p>
+            <a th:href="@{/detail/{id}(id = ${item.id})}">상세</a>
+            <a th:href="@{/update/{id}(id = ${item.id})}">수정</a>
+            <button th:onclick="|fetchDelete([[${item.id}]])|">삭제</button>
+        </div>
     </div>
-</div>
+    <nav class="pagination" aria-label="Pagination">
+        <!-- Prev -->
+        <a class="page-link"
+           th:classappend="${items.hasPrevious()} ? '' : 'is-disabled'"
+           th:href="@{/list/page/{p}(p=${items.number})}">
+            ‹ Prev
+        </a>
+
+        <!-- Page numbers -->
+        <a class="page-link"
+           th:each="i : ${#numbers.sequence(1, items.totalPages)}"
+           th:href="@{/list/page/{p}(p=${i})}"
+           th:text="${i}"
+           th:classappend="${i == items.number + 1} ? 'is-active' : ''">
+        </a>
+
+        <!-- Next -->
+        <a class="page-link"
+           th:classappend="${items.hasNext()} ? '' : 'is-disabled'"
+           th:href="@{/list/page/{p}(p=${items.number + 2})}">
+            Next ›
+        </a>
+    </nav>
 <script>
     async function fetchDelete(id) {
         const response = await fetch('/delete/' + id, {

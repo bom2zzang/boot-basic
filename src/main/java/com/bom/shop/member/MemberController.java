@@ -1,10 +1,12 @@
 package com.bom.shop.member;
 
+import lombok.Getter;
 import lombok.RequiredArgsConstructor;
 import org.springframework.security.core.Authentication;
 import org.springframework.stereotype.Controller;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.ResponseBody;
 
 @Controller
 @RequiredArgsConstructor
@@ -44,5 +46,24 @@ public class MemberController {
 
     }
 
+    @GetMapping("/user/1")
+    @ResponseBody
+    public MemberDto getUser(){
+        var a = memberRepository.findById(1L);
+        var result = a.get();
+        var data = new MemberDto(result.getUsername(), result.getDisplayName());
+        return data;
+    }
 
+
+}
+
+@Getter
+class MemberDto {
+    String username;
+    String displayName;
+    MemberDto(String a, String b){ // 생성자로 깔끔하게 초기화
+        this.username = a;
+        this.displayName = b;
+    }
 }

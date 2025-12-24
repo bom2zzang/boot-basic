@@ -1,6 +1,8 @@
 package com.bom.shop.item;
 
 import lombok.RequiredArgsConstructor;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageRequest;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.Authentication;
 import org.springframework.stereotype.Controller;
@@ -72,5 +74,14 @@ public class ItemController {
         itemRepository.deleteById(id);
         return ResponseEntity.status(200).body("삭제완료");
     }
+
+    @GetMapping("/list/page/{pageNo}")
+    String getListPage(Model model, @PathVariable("pageNo") Integer PageNo){
+        Page<Item> result = itemRepository.findPageBy(PageRequest.of(PageNo-1,3));
+        model.addAttribute("items", result);
+        model.addAttribute("totalPages", result.getTotalPages());
+        return "list";
+    }
+
 
 }
