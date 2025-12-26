@@ -10,7 +10,7 @@ import java.util.Optional;
 public class ItemService {
 
     private final ItemRepository itemRepository;
-    public void saveItem(String title, Integer price){
+    public void saveItem(String title, Integer price, String imageUrl) {
 
         if(price < 0){
             throw new IllegalArgumentException("Price cannot be negative");
@@ -18,6 +18,7 @@ public class ItemService {
         Item item = new Item();
         item.setTitle(title);
         item.setPrice(price);
+        item.setImageUrl(imageUrl);
         itemRepository.save(item);
     }
 

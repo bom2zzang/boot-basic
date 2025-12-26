@@ -7,10 +7,7 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.Authentication;
 import org.springframework.stereotype.Controller;
 import org.springframework.ui.Model;
-import org.springframework.web.bind.annotation.DeleteMapping;
-import org.springframework.web.bind.annotation.GetMapping;
-import org.springframework.web.bind.annotation.PathVariable;
-import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
 import java.util.Optional;
@@ -21,20 +18,18 @@ public class ItemController {
 
     private final ItemRepository itemRepository;
     private final ItemService itemService;
+    private final S3Service s3Service;
 
 
     @GetMapping("/list")
     String list(Model model){
         List<Item> result = itemRepository.findAll();
         model.addAttribute("items", result);
-        return "list";
+        return "redirect:/list/page/1";
     }
 
     @GetMapping("/write")
-    String write(Authentication auth)
-
-    {
-
+    String write(Authentication auth){
         if(auth != null && auth.isAuthenticated()){
             return "redirect:/list";
         }else{
@@ -43,8 +38,8 @@ public class ItemController {
     }
 
     @PostMapping("/add")
-    String addPost(String title, Integer price){
-        itemService.saveItem(title, price);
+    String addPost(String title, Integer price, String imageUrl){
+        itemService.saveItem(title, price, imageUrl);
         return "redirect:/list";
     }
 
@@ -81,6 +76,14 @@ public class ItemController {
         model.addAttribute("items", result);
         model.addAttribute("totalPages", result.getTotalPages());
         return "list";
+    }
+
+    @GetMapping("/presigned-url")
+    @ResponseBody
+    String getURL(@RequestParam String filename){
+        System.out.println(filename);
+        var result = s3Service.createPresignedUrl("test/"+filename);
+        return result;
     }
 
 

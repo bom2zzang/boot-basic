@@ -45,3 +45,6 @@
 
 ## 11) Pagination (페이지 단위 조회)
 - [11-pagination.md](11-pagination.md)
+
+## 12) S3 파일 업로드 (Presigned URL 방식)
+- [12-s3-upload.md](12-s3-upload.md)

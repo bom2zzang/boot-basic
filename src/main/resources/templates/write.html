@@ -9,13 +9,37 @@
     <link href="/main.css" rel="stylesheet">
 </head>
 <body>
-<div th:replace="~{ nav.html::navbar }"></div>
+    <div th:replace="~{ nav.html::navbar }"></div>
 
-<form action="/add" method="POST">
-    <input name="title">
-    <input name="price">
-    <button type="submit">전송</button>
-</form>
+    <form action="/add" method="POST">
+        <input name="title">
+        <input name="price">
+        <input name="imageUrl" style="display: none">
+        <button type="submit">전송</button>
+    </form>
+    <input type="file" onchange="getURL(this)"/>
+    <img src=""/>
 
+<script>
+    async function getURL(input) {
+        const file = input.files[0];
+        const name = encodeURIComponent(file.name);
+        let result = await fetch('presigned-url?filename='+name);
+        result = await result.text();
+        console.log(result);
+
+        const upload = await fetch(result, {
+            method: 'PUT',
+            body: input.files[0]
+        })
+        console.log(upload.url.split("?")[0]);
+        if(upload.ok){
+            document.querySelector('img').src = upload.url.split("?")[0];
+            document.querySelector('input[name="imageUrl"]').value = upload.url.split("?")[0];
+        } else {
+            alert("업로드 실패");
+        }
+    }
+</script>
 </body>
 </html>
