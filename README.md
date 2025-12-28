@@ -28,3 +28,4 @@ Spring Boot 학습용 프로젝트입니다.
 - DTO: [docs/10-dto.md](docs/10-dto.md)
 - Pagination: [docs/11-pagination.md](docs/11-pagination.md)
 - S3 파일 업로드: [docs/12-s3-upload.md](docs/12-s3-upload.md)
+- Redis: [docs/13-redis.md](docs/13-redis.md)

@@ -48,3 +48,6 @@
 
 ## 12) S3 파일 업로드 (Presigned URL 방식)
 - [12-s3-upload.md](12-s3-upload.md)
+
+## 13) Redis (캐싱 / 분산락)
+- [13-redis.md](13-redis.md)
