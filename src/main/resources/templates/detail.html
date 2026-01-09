@@ -10,13 +10,217 @@
 </head>
 <body>
 <div th:replace="~{ nav.html::navbar }"></div>
+
 <div class="detail">
     <h4>상세페이지</h4>
+
     <img th:src="@{${#strings.isEmpty(item.imageUrl) ? 'https://placehold.co/300' : item.imageUrl}}"
          alt="" />
+
     <h4 th:text="${item.title}"></h4>
     <p th:text="${item.price+ '원'}"></p>
+
+    <div class="comment-box">
+        <h5>댓글</h5>
+
+        <div id="comments-container"></div>
+
+        <div id="comment-status" class="comment-status" aria-live="polite"></div>
+
+        <form class="new-comment" action="/comment" method="POST">
+            <input type="hidden" name="itemId" th:value="${item.id}">
+
+            <input
+                    type="text"
+                    name="content"
+                    placeholder="댓글을 입력하세요"
+                    required
+                    maxlength="200"
+                    autocomplete="off"
+            />
+
+            <button type="submit">전송</button>
+
+            <div class="comment-meta">
+                <span id="comment-count"></span>
+                <span id="comment-len">0 / 200</span>
+            </div>
+        </form>
+    </div>
+
 </div>
+<script th:inline="javascript">
+    const itemId = [[${item.id}]];
+
+    let lastFetchController = null;
+
+    document.addEventListener('DOMContentLoaded', () => {
+        const form = document.querySelector('form.new-comment');
+        const input = form.querySelector('input[name="content"]');
+        const lenEl = document.getElementById('comment-len');
+
+        // 글자수 표시
+        input.addEventListener('input', () => {
+            lenEl.textContent = `${input.value.length} / 200`;
+        });
+
+        // 제출 핸들러
+        form.addEventListener('submit', postCommentAjax);
+
+        // 처음 로드시 목록
+        fetchComments();
+    });
+
+    async function fetchComments() {
+        // 이전 요청 취소(빠르게 연타할 때 깔끔)
+        if (lastFetchController) lastFetchController.abort();
+        lastFetchController = new AbortController();
+
+        const container = document.getElementById('comments-container');
+        setStatus('불러오는 중...', 'info');
+
+        try {
+            const res = await fetch('/comments/' + itemId, { signal: lastFetchController.signal });
+            if (!res.ok) throw new Error('fetch failed');
+
+            const comments = await res.json(); // [{id, username, content, parentId}, ...]
+            renderFlat(comments, container);
+
+            // 카운트 표시
+            const countEl = document.getElementById('comment-count');
+            countEl.textContent = `총 ${comments?.length ?? 0}개`;
+
+            clearStatus();
+        } catch (e) {
+            if (e.name === 'AbortError') return;
+            container.innerHTML = '';
+            setStatus('댓글을 불러오는데 실패했습니다.', 'error');
+        }
+    }
+
+    async function postCommentAjax(e) {
+        e.preventDefault();
+
+        const form = e.currentTarget;
+        const input = form.querySelector('input[name="content"]');
+        const btn = form.querySelector('button[type="submit"]');
+
+        const content = input.value.trim();
+        if (!content) return;
+
+        // 1) 먼저 FormData 생성 (disabled 되기 전에!)
+        const formData = new FormData(form);
+
+        // trim 적용한 값으로 확실히 덮어쓰기
+        formData.set('content', content);
+
+        // 2) 그 다음 로딩 처리(비활성화)
+        btn.disabled = true;
+        input.disabled = true;
+
+        try {
+            const res = await fetch(form.action, {
+                method: 'POST',
+                body: new URLSearchParams(formData),
+                headers: {
+                    'Content-Type': 'application/x-www-form-urlencoded;charset=UTF-8',
+                    'X-Requested-With': 'XMLHttpRequest'
+                }
+            });
+
+            if (!res.ok) throw new Error('POST failed');
+
+            input.value = '';
+            await fetchComments();
+        } catch (err) {
+            alert('댓글 작성 실패');
+        } finally {
+            btn.disabled = false;
+            input.disabled = false;
+        }
+    }
+
+
+    function renderFlat(comments, container) {
+        container.innerHTML = '';
+
+        if (!comments || comments.length === 0) {
+            container.textContent = '댓글이 없습니다.';
+            return;
+        }
+
+        comments.forEach(c => {
+            const div = document.createElement('div');
+            div.className = 'comment';
+
+            const strong = document.createElement('strong');
+            strong.textContent = c.username;
+
+            const text = document.createElement('span');
+            text.textContent = ' : ' + c.content;
+
+            div.appendChild(strong);
+            div.appendChild(text);
+            container.appendChild(div);
+        });
+    }
+
+    // optimistic UI: 임시 댓글 추가(등록 중 표시)
+    function appendPendingComment(comment) {
+        const container = document.getElementById('comments-container');
+
+        // 댓글 없을 때 문구가 있으면 비워주기
+        if (container.textContent === '댓글이 없습니다.') container.innerHTML = '';
+
+        const div = document.createElement('div');
+        div.className = 'comment is-pending';
+        div.dataset.tempId = comment.id;
+
+        const strong = document.createElement('strong');
+        strong.textContent = comment.username;
+
+        const text = document.createElement('span');
+        text.textContent = ' : ' + comment.content;
+
+        div.appendChild(strong);
+        div.appendChild(text);
+
+        // 맨 아래에 추가
+        container.appendChild(div);
+        return div;
+    }
+
+    function setLoading(form, loading) {
+        const input = form.querySelector('input[name="content"]');
+        const btn = form.querySelector('button[type="submit"]');
+
+        input.disabled = loading;
+        btn.disabled = loading;
+    }
+
+    function setStatus(msg, type) {
+        const el = document.getElementById('comment-status');
+        el.textContent = msg;
+        el.className = 'comment-status ' + (type || '');
+    }
+
+    function clearStatus() {
+        const el = document.getElementById('comment-status');
+        el.textContent = '';
+        el.className = 'comment-status';
+    }
+
+    function scrollToBottomAndHighlightLast() {
+        const container = document.getElementById('comments-container');
+        const last = container.lastElementChild;
+        if (!last) return;
+
+        last.scrollIntoView({ behavior: 'smooth', block: 'end' });
+        last.classList.add('is-highlight');
+        setTimeout(() => last.classList.remove('is-highlight'), 900);
+    }
+</script>
+
 
 </body>
 </html>

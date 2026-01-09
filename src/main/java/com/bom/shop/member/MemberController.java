@@ -5,6 +5,7 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.security.core.Authentication;
 import org.springframework.stereotype.Controller;
 import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.ResponseBody;
 
@@ -38,7 +39,7 @@ public class MemberController {
 
         if(auth != null && auth.isAuthenticated()){
             CustomUser user = (CustomUser) auth.getPrincipal(); // 타입캐스팅
-            System.out.println("Welcome, " + user.displayName);
+            System.out.println("Welcome, " + user.getDisplayName());
             return "mypage";
         }else{
             return "redirect:/login";
@@ -46,10 +47,10 @@ public class MemberController {
 
     }
 
-    @GetMapping("/user/1")
+    @GetMapping("/user/{id}")
     @ResponseBody
-    public MemberDto getUser(){
-        var a = memberRepository.findById(1L);
+    public MemberDto getUser(@PathVariable Long id){
+        var a = memberRepository.findById(id);
         var result = a.get();
         var data = new MemberDto(result.getUsername(), result.getDisplayName());
         return data;
