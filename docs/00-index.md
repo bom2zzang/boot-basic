@@ -51,3 +51,7 @@
 
 ## 13) Redis (캐싱 / 분산락)
 - [13-redis.md](13-redis.md)
+
+## 14) index, full text index
+- [14-index.md](14-index.md)
+```

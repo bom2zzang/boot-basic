@@ -9,6 +9,7 @@ import lombok.ToString;
 @ToString
 @Getter
 @Setter
+@Table(indexes = @Index(columnList = "title", name="idx_title"))
 public class Item {
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)

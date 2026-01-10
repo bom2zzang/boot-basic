@@ -86,5 +86,27 @@ public class ItemController {
         return result;
     }
 
+    @GetMapping("/search")
+    String getSearch(
+            @RequestParam String searchText,
+            @RequestParam(defaultValue = "1") Integer page,
+            Model model
+    ) {
+        int pageSize = 3;
+
+        Page<Item> result = itemRepository.findByTitleUsingFullTextSearch(
+                searchText,
+                PageRequest.of(page - 1, pageSize)
+        );
+
+        model.addAttribute("items", result);
+        model.addAttribute("totalPages", result.getTotalPages());
+        model.addAttribute("searchText", searchText);
+        model.addAttribute("currentPage", page);
+
+        return "list";
+    }
+
+
 
 }

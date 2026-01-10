@@ -10,7 +10,11 @@
 </head>
 <body>
     <div th:replace="~{ nav.html::navbar }"></div>
-    <div class="card" th:each="item:${items}">
+    <form action="/search" method="GET">
+        <input name="searchText" type="text" th:value="${searchText}" placeholder="검색어를 입력하세요"/>
+        <button type="submit">검색</button>
+    </form>
+    <div class="card" th:each="item:${items.content}">
         <img th:src="@{${#strings.isEmpty(item.imageUrl) ? 'https://placehold.co/300' : item.imageUrl}}"
              alt="" />
         <div>
@@ -21,18 +25,22 @@
             <button th:onclick="|fetchDelete([[${item.id}]])|">삭제</button>
         </div>
     </div>
-    <nav class="pagination" aria-label="Pagination">
+    <nav class="pagination" aria-label="Pagination" th:if="${items.totalPages > 0}">
         <!-- Prev -->
         <a class="page-link"
            th:classappend="${items.hasPrevious()} ? '' : 'is-disabled'"
-           th:href="@{/list/page/{p}(p=${items.number})}">
+           th:href="${searchText != null && !#strings.isEmpty(searchText)} ?
+              @{/search(searchText=${searchText}, page=${items.number})} :
+              @{/list/page/{p}(p=${items.number})}">
             ‹ Prev
         </a>
 
         <!-- Page numbers -->
         <a class="page-link"
            th:each="i : ${#numbers.sequence(1, items.totalPages)}"
-           th:href="@{/list/page/{p}(p=${i})}"
+           th:href="${searchText != null && !#strings.isEmpty(searchText)} ?
+              @{/search(searchText=${searchText}, page=${i})} :
+              @{/list/page/{p}(p=${i})}"
            th:text="${i}"
            th:classappend="${i == items.number + 1} ? 'is-active' : ''">
         </a>
@@ -40,11 +48,14 @@
         <!-- Next -->
         <a class="page-link"
            th:classappend="${items.hasNext()} ? '' : 'is-disabled'"
-           th:href="@{/list/page/{p}(p=${items.number + 2})}">
+           th:href="${searchText != null && !#strings.isEmpty(searchText)} ?
+              @{/search(searchText=${searchText}, page=${items.number + 2})} :
+              @{/list/page/{p}(p=${items.number + 2})}">
             Next ›
         </a>
     </nav>
-<script>
+
+    <script>
     async function fetchDelete(id) {
         const response = await fetch('/delete/' + id, {
             method: 'DELETE'
