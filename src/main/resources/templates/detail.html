@@ -19,7 +19,30 @@
 
     <h4 th:text="${item.title}"></h4>
     <p th:text="${item.price+ '원'}"></p>
+    <div class="order-box">
+        <h5>주문</h5>
 
+        <div class="order-row">
+            <div class="order-info">
+                <span class="order-label">가격</span>
+                <strong id="order-price-text" th:text="${item.price + '원'}"></strong>
+            </div>
+
+            <div class="order-info">
+                <span class="order-label">수량</span>
+                <input id="order-count" type="number" min="1" value="1" />
+            </div>
+
+            <div class="order-info">
+                <span class="order-label">합계</span>
+                <strong id="order-total">0원</strong>
+            </div>
+        </div>
+
+        <div id="order-status" class="order-status" aria-live="polite"></div>
+
+        <button id="order-btn" type="button">주문하기</button>
+    </div>
     <div class="comment-box">
         <h5>댓글</h5>
 
@@ -218,6 +241,92 @@
         last.scrollIntoView({ behavior: 'smooth', block: 'end' });
         last.classList.add('is-highlight');
         setTimeout(() => last.classList.remove('is-highlight'), 900);
+    }
+
+    // 주문 처리
+    const itemPrice = [[${item.price}]];
+
+    document.addEventListener('DOMContentLoaded', () => {
+        // ===== 댓글 =====
+        const form = document.querySelector('form.new-comment');
+        const input = form.querySelector('input[name="content"]');
+        const lenEl = document.getElementById('comment-len');
+
+        input.addEventListener('input', () => {
+            lenEl.textContent = `${input.value.length} / 200`;
+        });
+
+        form.addEventListener('submit', postCommentAjax);
+        fetchComments();
+
+        // ===== 주문 =====
+        initOrderUI();
+    });
+
+    function initOrderUI() {
+        const countInput = document.getElementById('order-count');
+        const totalEl = document.getElementById('order-total');
+        const btn = document.getElementById('order-btn');
+
+        const renderTotal = () => {
+            const count = Math.max(1, parseInt(countInput.value || '1', 10));
+            countInput.value = String(count);
+            totalEl.textContent = formatWon(itemPrice * count);
+        };
+
+        countInput.addEventListener('input', renderTotal);
+        renderTotal();
+
+        btn.addEventListener('click', orderAjax);
+    }
+
+    async function orderAjax() {
+        const btn = document.getElementById('order-btn');
+        const countInput = document.getElementById('order-count');
+
+        const count = Math.max(1, parseInt(countInput.value || '1', 10));
+
+        // 컨트롤러가 받는 파라미터: itemId, price, count
+        const body = new URLSearchParams({
+            itemId: String(itemId),
+            price: String(itemPrice),
+            count: String(count),
+        });
+
+        btn.disabled = true;
+        setOrderStatus('주문 처리 중...', 'info');
+
+        try {
+            const res = await fetch('/order', {
+                method: 'POST',
+                body,
+                headers: {
+                    'Content-Type': 'application/x-www-form-urlencoded;charset=UTF-8',
+                    'X-Requested-With': 'XMLHttpRequest',
+                },
+            });
+
+            if (!res.ok) throw new Error('order failed');
+
+            setOrderStatus('주문이 완료되었습니다!', 'success');
+
+
+        } catch (e) {
+            setOrderStatus('주문에 실패했습니다. (로그인/서버 오류 확인)', 'error');
+        } finally {
+            btn.disabled = false;
+        }
+    }
+
+    function setOrderStatus(msg, type) {
+        const el = document.getElementById('order-status');
+        if (!el) return;
+        el.textContent = msg;
+        el.className = 'order-status ' + (type || '');
+    }
+
+    function formatWon(n) {
+        return new Intl.NumberFormat('ko-KR').format(n) + '원';
     }
 </script>
 

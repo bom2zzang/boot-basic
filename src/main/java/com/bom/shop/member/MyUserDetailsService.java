@@ -34,7 +34,8 @@ public class MyUserDetailsService implements UserDetailsService {
                 user.getUsername(),
                 user.getPassword(),
                 auth,
-                user.getDisplayName()
+                user.getDisplayName(),
+                user.getId()
         );
         return a;
     }

@@ -40,6 +40,7 @@ public class MemberController {
         if(auth != null && auth.isAuthenticated()){
             CustomUser user = (CustomUser) auth.getPrincipal(); // 타입캐스팅
             System.out.println("Welcome, " + user.getDisplayName());
+            System.out.println(user);
             return "mypage";
         }else{
             return "redirect:/login";
