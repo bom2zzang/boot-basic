@@ -31,9 +31,9 @@ public class ItemController {
     @GetMapping("/write")
     String write(Authentication auth){
         if(auth != null && auth.isAuthenticated()){
-            return "redirect:/list";
-        }else{
             return "write";
+        }else{
+            return "redirect:/list";
         }
     }
 

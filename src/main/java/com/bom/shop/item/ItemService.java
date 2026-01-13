@@ -19,6 +19,7 @@ public class ItemService {
         item.setTitle(title);
         item.setPrice(price);
         item.setImageUrl(imageUrl);
+        item.setCount(10);
         itemRepository.save(item);
     }
 

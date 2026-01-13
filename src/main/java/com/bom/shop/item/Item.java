@@ -20,6 +20,7 @@ public class Item {
 
     private Integer price;
     private String imageUrl;
+    private Integer count;
     private String regName;
 
 

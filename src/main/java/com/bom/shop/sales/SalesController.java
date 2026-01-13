@@ -1,7 +1,6 @@
 package com.bom.shop.sales;
 
 import com.bom.shop.member.CustomUser;
-import com.bom.shop.member.MemberRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.security.core.Authentication;
 import org.springframework.stereotype.Controller;
@@ -16,7 +15,6 @@ import java.util.List;
 public class SalesController {
 
     private final SalesRepository salesRepository;
-    private final MemberRepository memberRepository;
     private final SalesService salesService;
 
     @PostMapping("/order")
